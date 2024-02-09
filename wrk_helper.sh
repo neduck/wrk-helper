@@ -1,10 +1,11 @@
 #!/bin/bash
 
 if [[ $1 = "-h" ]]; then
-    echo "Usage: $0 -t <threads> -c <connections> -R <RPS> -d <duration> --sleep <iteration sleep> <url>"
+    echo "Usage: $0 -t <threads> -c <connections> -R <RPS> -d <duration> -s <iteration sleep> -p <wrk exec path> <url>"
     exit 1
 fi
 
+WRK_EXEC_PATH="wrk"
 SLEEP_DURATION=30
 THREADS=1
 CONNECTIONS_VALUES=1
@@ -12,13 +13,14 @@ DURATION=30
 RPS_VALUES=100
 URL=
 
-while getopts ":t:c:d:R:sleep:" opt; do
+while getopts ":t:c:d:R:s:p:" opt; do
     case $opt in
         t) THREADS=$OPTARG;;
         c) CONNECTIONS_VALUES=$OPTARG;;
         d) DURATION=$OPTARG;;
         R) RPS_VALUES=$OPTARG;;
-        sleep) SLEEP_DURATION=$OPTARG;;
+        s) SLEEP_DURATION=$OPTARG;;
+        p) WRK_EXEC_PATH=$OPTARG;;
         \?) echo "Invalid option: -$OPTARG" >&2; exit 1;;
         :)  echo "Option -$OPTARG requires an argument." >&2; exit 1;;
     esac
@@ -40,15 +42,15 @@ if [ ${#CONNECTIONS_VALUES[@]} -eq 0 ] || [ ${#RPS_VALUES[@]} -eq 0 ]; then
     exit 1
 fi
 
+safe_url=$(echo "$URL" | sed 's/[^a-zA-Z0-9]/_/g')
 for connections in "${CONNECTIONS_VALUES[@]}"; do
-  safe_url=$(echo "$URL" | sed 's/[^a-zA-Z0-9]/_/g')
   OUTPUT_FILE="$(date '+%Y_%m_%d_%H_%M_%S')-$safe_url-c-$connections.txt"
   echo "$OUTPUT_FILE"
   touch "$OUTPUT_FILE"
 
   for rps in "${RPS_VALUES[@]}"; do
-    echo "Running test with $connections connections and $rps RPS_VALUES..."
-    command="wrk -t$THREADS -c$connections -R$rps -d$DURATION -L $URL"
+    echo "Running test with $connections connections and $rps RPS..."
+    command="$WRK_EXEC_PATH -t$THREADS -c$connections -R$rps -d$DURATION -L $URL"
     echo "$command" >> "$OUTPUT_FILE"
     $command >> "$OUTPUT_FILE" 2>&1
     echo "-------------------------------------------" >> "$OUTPUT_FILE"
