@@ -52,7 +52,7 @@ done
 shift $((OPTIND -1))
 url=$1
 if [ -z "$url" ]; then
-    echo "Error: url is required." >&2
+    echo "Error: URL is required." >&2
     show_help
     exit 1
 fi
@@ -69,14 +69,15 @@ safe_url=$(echo "$url" | sed 's/[^a-zA-Z0-9]/_/g')
 i=0
 for connections in "${connections_values[@]}"; do
   output_file="$(date '+%Y_%m_%d_%H_%M_%S')-$safe_url-c$connections.txt"
-  echo "$output_file"
-  touch "$output_file"
+  echo -e "\n$output_file\n------------"
 
   for rps in "${rps_values[@]}"; do
     ((i++))
-    echo "Running test with $connections connections and $rps RPS..."
+    echo -e "$i/$((${#connections_values[@]} * ${#rps_values[@]})): Running test with $connections connections and $rps RPS..."
+
     command="$wrk_exec_path -t$threads -c$connections -R$rps -d$duration -L $url"
     echo "$command" >> "$output_file"
+
     if [ "$verbose" = "1" ]; then
       $command 2>&1 | tee -a "$output_file"
     else
@@ -90,12 +91,13 @@ for connections in "${connections_values[@]}"; do
     fi
     echo "-------------------------------------------" >> "$output_file"
 
-    if [ "$i" -ne "$(( ${#connections_values[@]} * ${#rps_values[@]} ))" ]; then
-      echo "Test completed. Sleep $sleep_duration"
+    if [ "$i" -ne "$(( ${#connections_values[@]} * ${#rps_values[@]}))" ]; then
+      echo "Done. Sleep $sleep_duration"
       sleep "$sleep_duration"
+    else
+      echo "Done"
     fi
-    echo "-------------------------------------------"
   done
 done
 
-echo "All tests completed."
+echo -e "\nAll tests completed."
