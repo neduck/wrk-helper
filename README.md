@@ -5,7 +5,7 @@ A script for automating web application performance testing using [wrk](https://
 ### Running Tests
 `./wrk_helper.sh -t4 -c"100,500" -R"100,500,1000,3000" -d60 http://localhost`
 ### Data parsing and chart generation 
-`python3 wrk_parser.py 2024_02_19_02_02_31-http___localhost-c100.txt`
+`python wrk_parser.py 2024_02_19_02_02_31-http___localhost-c100.txt`
 
 ## Command Line Options
 ```
