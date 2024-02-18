@@ -2,8 +2,10 @@
 A script for automating web application performance testing using [wrk](https://github.com/wg/wrk) or [wrk2](https://github.com/giltene/wrk2), running a series of tests with different parameters.
 
 ## Basic Usage
-
+### Running Tests
 `./wrk_helper.sh -t4 -c"100,500" -R"100,500,1000,3000" -d60 http://localhost`
+### Data parsing and chart generation 
+`python3 wrk_parser.py 2024_02_19_02_02_31-http___localhost-c100.txt`
 
 ## Command Line Options
 ```
@@ -23,3 +25,4 @@ Options:
 ## Previews
 ![](previews/preview2.jpg)
 ![](previews/preview3.jpg)
+![](previews/preview4.jpg)
