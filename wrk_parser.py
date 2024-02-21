@@ -5,6 +5,37 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.gridspec import GridSpec
 
+def convert_to_kilobytes(value):
+    unit_mapping = {
+        "B": 1 / 1024,      # Байт в килобайты
+        "KB": 1,
+        "MB": 1024,
+        "GB": 1024 * 1024,
+        "TB": 1024 * 1024 * 1024
+    }
+
+    unit = value[-2:]
+    if unit in unit_mapping:
+        try:
+            val_str = value[:-2]  # Получаем числовую часть (исключая единицы измерения)
+            val = float(val_str)
+            return val * unit_mapping[unit]
+        except ValueError:
+            print("Невозможно преобразовать значение времени в число:", value)
+    else:
+        unit = value[-1]  # Если нет единиц времени, пробуем взять последний символ
+        if unit in unit_mapping:
+            try:
+                val_str = value[:-1]  # Получаем числовую часть (исключая единицы измерения)
+                val = float(val_str)
+                return val * unit_mapping[unit]
+            except ValueError:
+                print("Невозможно преобразовать значение времени в число:", value)
+        else:
+            print("Неизвестные единицы времени:", unit)
+
+    return None
+
 def convert_to_ms(value):
     unit_mapping = {
         'μs': 0.001,
@@ -162,28 +193,25 @@ if __name__ == "__main__":
 
 
     # Создание фигуры и GridSpec
-    fig = plt.figure(figsize=(12, 20))
-    gs = GridSpec(4, 2, figure=fig, top=0.95, bottom=0.05, left=0.08, right=0.92, hspace=0.5, height_ratios=[1, 1, 1, 2])
+    fig = plt.figure(figsize=(12, 15))
+    gs = GridSpec(3, 2, figure=fig, top=0.95, bottom=0.05, left=0.08, right=0.92, hspace=0.3, height_ratios=[1, 1, 2])
 
     rs = [int(item["iteration_settings"]["R"]) for item in parsed_results]
 
     ax1 = fig.add_subplot(gs[0, 0])
-    requestsReal = [int(item["total"]["requests"]) for item in parsed_results]
-    requestsRequested = [int(item["iteration_settings"]["R"])*int(item["iteration_settings"]["d"]) for item in parsed_results]
-    ax1.plot(rs, requestsReal, label='Real', marker='o')
-    ax1.plot(rs, requestsRequested, label='Requested', marker='o')
-    ax1.set_title('Requests')
+    RPSs = [float(item["total"]["requests_per_sec"]) for item in parsed_results]
+    ax1.plot(rs, RPSs, label='Real', marker='o')
+    ax1.plot(rs, rs, label='Requested', marker='o')
+    ax1.set_title('RPS')
     ax1.set_xlabel('R=')
     ax1.legend()
     ax1.grid(True)
 
     ax2 = fig.add_subplot(gs[0, 1])
-    RPSs = [float(item["total"]["requests_per_sec"]) for item in parsed_results]
-    ax2.plot(rs, RPSs, label='Real', marker='o')
-    ax2.plot(rs, rs, label='Requested', marker='o')
-    ax2.set_title('RPS')
+    requestsReal = [convert_to_kilobytes(item["total"]["transfer_per_sec"]) for item in parsed_results]
+    ax2.plot(rs, requestsReal, label='Transfer/sec', marker='o')
+    ax2.set_title('Transfer/sec (KB)')
     ax2.set_xlabel('R=')
-    ax2.legend()
     ax2.grid(True)
 
     ax3 = fig.add_subplot(gs[1, 0])
@@ -199,33 +227,21 @@ if __name__ == "__main__":
     ax3.grid(True)
 
     ax4 = fig.add_subplot(gs[1, 1])
-    stdevLatencies = [float(item["latency"]["stdev_percent"][:-1]) for item in parsed_results]
-    stdevRPS = [float(item["req_per_sec"]["stdev_percent"][:-1]) for item in parsed_results]
-    ax4.plot(rs, stdevLatencies, label='Latency', marker='o')
-    ax4.plot(rs, stdevRPS, label='RPS', marker='o')
-    ax4.set_title('STDEV')
+    socket_connect_errors = [int(item["errors"]["socket_connect"]) for item in parsed_results]
+    socket_read_errors = [int(item["errors"]["socket_read"]) for item in parsed_results]
+    socket_write_errors = [int(item["errors"]["socket_write"]) for item in parsed_results]
+    socket_timeout_errors = [int(item["errors"]["socket_timeout"]) for item in parsed_results]
+    ax4.plot(rs, socket_connect_errors, label='SocketConnect Errors', marker='o')
+    ax4.plot(rs, socket_read_errors, label='SocketRead Errors', marker='o')
+    ax4.plot(rs, socket_write_errors, label='SocketWrite Errors', marker='o')
+    ax4.plot(rs, socket_timeout_errors, label='SocketTimeout Errors', marker='o')
+    ax4.set_title('Errors count')
     ax4.set_xlabel('R=')
-    ax4.set_ylabel('%')
     ax4.legend()
     ax4.grid(True)
 
     ax5 = fig.add_subplot(gs[2, :])
     inner_ax1 = ax5
-    socket_connect_errors = [int(item["errors"]["socket_connect"]) for item in parsed_results]
-    socket_read_errors = [int(item["errors"]["socket_read"]) for item in parsed_results]
-    socket_write_errors = [int(item["errors"]["socket_write"]) for item in parsed_results]
-    socket_timeout_errors = [int(item["errors"]["socket_timeout"]) for item in parsed_results]
-    inner_ax1.plot(rs, socket_connect_errors, label='SocketConnect Errors', marker='o')
-    inner_ax1.plot(rs, socket_read_errors, label='SocketRead Errors', marker='o')
-    inner_ax1.plot(rs, socket_write_errors, label='SocketWrite Errors', marker='o')
-    inner_ax1.plot(rs, socket_timeout_errors, label='SocketTimeout Errors', marker='o')
-    inner_ax1.set_title('Errors count')
-    inner_ax1.set_xlabel('R=')
-    inner_ax1.legend()
-    inner_ax1.grid(True)
-
-    ax6 = fig.add_subplot(gs[3, :])
-    inner_ax2 = ax6
     for item in parsed_results:
         r_value = item["iteration_settings"]["R"]
         percentiles = sorted(item["percentile_spectrum"].keys())
@@ -234,12 +250,12 @@ if __name__ == "__main__":
         # Преобразуем процентили в числа с плавающей запятой
         percentiles_float = np.array(percentiles, dtype=float)
 
-        inner_ax2.plot(percentiles_float, np.interp(percentiles_float, percentiles_float, latency_values), label=f'R={r_value}')
+        inner_ax1.plot(percentiles_float, np.interp(percentiles_float, percentiles_float, latency_values), label=f'R={r_value}')
 
-    inner_ax2.set_title('Latency (ms) percentile spectrum')
-    inner_ax2.set_xlabel('Percentile')
-    inner_ax2.legend()
-    inner_ax2.grid(True)
+    inner_ax1.set_title('Latency (ms) percentile spectrum')
+    inner_ax1.set_xlabel('Percentile')
+    inner_ax1.legend()
+    inner_ax1.grid(True)
 
     chart_filename = f"{input_filename[:-4]}_chart.png"
     plt.savefig(chart_filename)
