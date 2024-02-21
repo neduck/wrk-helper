@@ -7,7 +7,7 @@ from matplotlib.gridspec import GridSpec
 
 def convert_to_kilobytes(value):
     unit_mapping = {
-        "B": 1 / 1024,      # Байт в килобайты
+        "B": 1 / 1024,
         "KB": 1,
         "MB": 1024,
         "GB": 1024 * 1024,
@@ -16,23 +16,17 @@ def convert_to_kilobytes(value):
 
     unit = value[-2:]
     if unit in unit_mapping:
-        try:
-            val_str = value[:-2]  # Получаем числовую часть (исключая единицы измерения)
-            val = float(val_str)
-            return val * unit_mapping[unit]
-        except ValueError:
-            print("Невозможно преобразовать значение времени в число:", value)
+        val_str = value[:-2]  # Получаем числовую часть (исключая единицы измерения)
+        val = float(val_str)
+        return val * unit_mapping[unit]
     else:
         unit = value[-1]  # Если нет единиц времени, пробуем взять последний символ
         if unit in unit_mapping:
-            try:
-                val_str = value[:-1]  # Получаем числовую часть (исключая единицы измерения)
-                val = float(val_str)
-                return val * unit_mapping[unit]
-            except ValueError:
-                print("Невозможно преобразовать значение времени в число:", value)
+            val_str = value[:-1]
+            val = float(val_str)
+            return val * unit_mapping[unit]
         else:
-            print("Неизвестные единицы времени:", unit)
+            print("Unknown type:", unit)
 
     return None
 
@@ -47,23 +41,17 @@ def convert_to_ms(value):
 
     unit = value[-2:]
     if unit in unit_mapping:
-        try:
-            val_str = value[:-2]  # Получаем числовую часть (исключая единицы измерения)
-            val = float(val_str)
-            return val * unit_mapping[unit]
-        except ValueError:
-            print("Невозможно преобразовать значение времени в число:", value)
+        val_str = value[:-2]  # Получаем числовую часть (исключая единицы измерения)
+        val = float(val_str)
+        return val * unit_mapping[unit]
     else:
         unit = value[-1]  # Если нет единиц времени, пробуем взять последний символ
         if unit in unit_mapping:
-            try:
-                val_str = value[:-1]  # Получаем числовую часть (исключая единицы измерения)
-                val = float(val_str)
-                return val * unit_mapping[unit]
-            except ValueError:
-                print("Невозможно преобразовать значение времени в число:", value)
+            val_str = value[:-1]  # Получаем числовую часть (исключая единицы измерения)
+            val = float(val_str)
+            return val * unit_mapping[unit]
         else:
-            print("Неизвестные единицы времени:", unit)
+            print("Unknow time type:", unit)
 
     return None
 
@@ -79,6 +67,11 @@ def parse_wrk_output(output):
         params_match = re.findall(r'-([a-zA-Z])(\d+|\S+)', wrk_command)
         for param, value in params_match:
             data['iteration_settings'][param] = value
+
+        # Поиск URL в строке
+        urlResult = re.search(r'https?://\S+', wrk_command)
+        if urlResult:
+            data['iteration_settings']['url'] = urlResult.group(0)
 
     # Поиск среднего времени ожидания
     latency_match = re.search(r'Latency\s+([0-9.]+[a-z]*)\s+([0-9.]+[a-z]*)\s+([0-9.]+[a-z]*)\s+([0-9.]+%)', output)
@@ -192,13 +185,33 @@ if __name__ == "__main__":
 
 
 
-    # Создание фигуры и GridSpec
-    fig = plt.figure(figsize=(12, 15))
-    gs = GridSpec(3, 2, figure=fig, top=0.95, bottom=0.05, left=0.08, right=0.92, hspace=0.3, height_ratios=[1, 1, 2])
+    fig = plt.figure(figsize=(12, 20))
+    gs = GridSpec(5, 2, figure=fig, top=0.95, bottom=0.05, left=0.08, right=0.92, hspace=0.3, height_ratios=[0.5, 1, 1, 2, 2])
+
+    ax0 = fig.add_subplot(gs[0, 0])
+    localizations = {
+        "t": "Threads",
+        "c": "Connections",
+        "R": "Requested RPS",
+        "d": "Test iteration durations",
+        "url": "URL"
+    }
+    table_data = []
+    for key in parsed_results[0]["iteration_settings"].keys():
+        values = [elem["iteration_settings"][key] for elem in parsed_results]
+        unique_values = set(values)
+        if len(unique_values) == 1:
+            table_data.append([localizations.get(key, key), values[0]])
+        else:
+            table_data.append([localizations.get(key, key), f"{min(values)}-{max(values)}"])
+
+    table = ax0.table(cellText=table_data, loc='center', cellLoc='left')
+    ax0.axis('off')
+    table.scale(1, 1.6)
 
     rs = [int(item["iteration_settings"]["R"]) for item in parsed_results]
 
-    ax1 = fig.add_subplot(gs[0, 0])
+    ax1 = fig.add_subplot(gs[1, 0])
     RPSs = [float(item["total"]["requests_per_sec"]) for item in parsed_results]
     ax1.plot(rs, RPSs, label='Real', marker='o')
     ax1.plot(rs, rs, label='Requested', marker='o')
@@ -207,14 +220,14 @@ if __name__ == "__main__":
     ax1.legend()
     ax1.grid(True)
 
-    ax2 = fig.add_subplot(gs[0, 1])
+    ax2 = fig.add_subplot(gs[1, 1])
     requestsReal = [convert_to_kilobytes(item["total"]["transfer_per_sec"]) for item in parsed_results]
     ax2.plot(rs, requestsReal, label='Transfer/sec', marker='o')
     ax2.set_title('Transfer/sec (KB)')
     ax2.set_xlabel('R=')
     ax2.grid(True)
 
-    ax3 = fig.add_subplot(gs[1, 0])
+    ax3 = fig.add_subplot(gs[2, 0])
     avgLatencies = [convert_to_ms(item["latency"]["avg"]) for item in parsed_results]
     medianLatencies = [convert_to_ms(item["latency_distribution"]["50.000%"]) for item in parsed_results]
     maxLatencies = [convert_to_ms(item["latency"]["max"]) for item in parsed_results]
@@ -226,7 +239,7 @@ if __name__ == "__main__":
     ax3.set_xlabel('R=')
     ax3.grid(True)
 
-    ax4 = fig.add_subplot(gs[1, 1])
+    ax4 = fig.add_subplot(gs[2, 1])
     socket_connect_errors = [int(item["errors"]["socket_connect"]) for item in parsed_results]
     socket_read_errors = [int(item["errors"]["socket_read"]) for item in parsed_results]
     socket_write_errors = [int(item["errors"]["socket_write"]) for item in parsed_results]
@@ -240,22 +253,31 @@ if __name__ == "__main__":
     ax4.legend()
     ax4.grid(True)
 
-    ax5 = fig.add_subplot(gs[2, :])
+    ax5 = fig.add_subplot(gs[3, :])
     inner_ax1 = ax5
     for item in parsed_results:
-        r_value = item["iteration_settings"]["R"]
-        percentiles = sorted(item["percentile_spectrum"].keys())
-        latency_values = [float(item["percentile_spectrum"][p]["value"]) for p in percentiles]
+        percentiles = list(item["latency_distribution"].keys())
+        latency_values = [convert_to_ms(item["latency_distribution"][p]) for p in percentiles]
+        percentiles = [float(p[:-1]) for p in percentiles]
+        inner_ax1.plot(percentiles, latency_values, label=f'R={item["iteration_settings"]["R"]}', marker='o')
 
-        # Преобразуем процентили в числа с плавающей запятой
-        percentiles_float = np.array(percentiles, dtype=float)
-
-        inner_ax1.plot(percentiles_float, np.interp(percentiles_float, percentiles_float, latency_values), label=f'R={r_value}')
-
-    inner_ax1.set_title('Latency (ms) percentile spectrum')
+    inner_ax1.set_title('Latency (ms) distribution')
     inner_ax1.set_xlabel('Percentile')
     inner_ax1.legend()
     inner_ax1.grid(True)
+
+    ax5 = fig.add_subplot(gs[4, :])
+    inner_ax2 = ax5
+    for item in parsed_results:
+        percentiles = list(item["percentile_spectrum"].keys())
+        latency_values = [float(item["percentile_spectrum"][p]["value"]) for p in percentiles]
+        percentiles = [100 * float(p) for p in percentiles]
+        inner_ax2.plot(percentiles, latency_values, label=f'R={item["iteration_settings"]["R"]}')
+
+    inner_ax2.set_title('Latency (ms) percentile spectrum')
+    inner_ax2.set_xlabel('Percentile')
+    inner_ax2.legend()
+    inner_ax2.grid(True)
 
     chart_filename = f"{input_filename[:-4]}_chart.png"
     plt.savefig(chart_filename)
