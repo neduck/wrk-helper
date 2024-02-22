@@ -191,7 +191,7 @@ if __name__ == "__main__":
     ax0 = fig.add_subplot(gs[0, 0])
     localizations = {
         "t": "Threads",
-        "c": "Connections",
+        "c": "Connections (per tread)",
         "R": "Requested RPS",
         "d": "Test iteration durations",
         "url": "URL"
