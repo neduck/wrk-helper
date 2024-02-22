@@ -211,6 +211,20 @@ if __name__ == "__main__":
 
     rs = [int(item["iteration_settings"]["R"]) for item in parsed_results]
 
+    table_data = [[],[],[],[]]
+    table_data[0] = rs.copy()
+    table_data[0].insert(0, "\R=")
+    table_data[1] = [elem["latency"]["max"] for elem in parsed_results]
+    table_data[1].insert(0, "Max lat")
+    table_data[2] = [elem["latency"]["avg"] for elem in parsed_results]
+    table_data[2].insert(0, "Avg lat")
+    table_data[3] = [int(float(elem["total"]["requests_per_sec"])) for elem in parsed_results]
+    table_data[3].insert(0, "RPS")
+    ax01 = fig.add_subplot(gs[0, 1])
+    ax01.axis('off')
+    table = ax01.table(cellText=table_data, loc='center', cellLoc='left')
+    table.scale(1, 1.05)
+
     ax1 = fig.add_subplot(gs[1, 0])
     RPSs = [float(item["total"]["requests_per_sec"]) for item in parsed_results]
     ax1.plot(rs, RPSs, label='Real', marker='o')
