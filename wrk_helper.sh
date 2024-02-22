@@ -73,7 +73,9 @@ for connections in "${connections_values[@]}"; do
 
   for rps in "${rps_values[@]}"; do
     ((i++))
-    echo -e "$i/$((${#connections_values[@]} * ${#rps_values[@]})): Running test with $connections connections and $rps RPS..."
+    estTimeM=$(echo "scale=2; (($duration + $sleep_duration) * ((${#connections_values[@]} * ${#rps_values[@]}) - $i + 1) - $sleep_duration) / 60" | bc)
+    estTimeM=$(echo "$estTimeM" | awk '{printf "%g", $0}')
+    echo -e "$i/$((${#connections_values[@]} * ${#rps_values[@]})): Running test with $connections connections and $rps RPS... (all tests will end in ${estTimeM}m)"
 
     command="$wrk_exec_path -t$threads -c$connections -R$rps -d$duration -L $url"
     echo "$command" >> "$output_file"
