@@ -30,6 +30,19 @@ def convert_to_kilobytes(value):
 
     return None
 
+def ms_to_human_readable(ms):
+    if ms >= 1000 * 60 * 60:  # Если больше или равно 1 часу
+        hours = round(ms / (1000 * 60 * 60), 1)
+        return f"{hours:.2f}h"
+    elif ms >= 1000 * 60:  # Если больше или равно 1 минуте
+        minutes = round(ms / (1000 * 60), 1)
+        return f"{minutes:.2f}m"
+    elif ms >= 1000:  # Если больше или равно 1 секунде
+        seconds = round(ms / 1000, 1)
+        return f"{seconds:.2f}s"
+    else:
+        return f"{ms:.2f}ms"
+
 def convert_to_ms(value):
     unit_mapping = {
         'μs': 0.001,
@@ -146,10 +159,10 @@ def parse_wrk_output(output):
     # Поиск ошибок сокета
     socket_errors_match = re.search(r'Socket errors: connect (\d+), read (\d+), write (\d+), timeout (\d+)', output)
     if socket_errors_match:
-        data['errors']['socket_connect'] = socket_errors_match.group(1)
-        data['errors']['socket_read'] = socket_errors_match.group(2)
-        data['errors']['socket_write'] = socket_errors_match.group(3)
-        data['errors']['socket_timeout'] = socket_errors_match.group(4)
+        data['errors']['socket_connect'] = int(socket_errors_match.group(1))
+        data['errors']['socket_read'] = int(socket_errors_match.group(2))
+        data['errors']['socket_write'] = int(socket_errors_match.group(3))
+        data['errors']['socket_timeout'] = int(socket_errors_match.group(4))
 
     return data
 
@@ -185,18 +198,19 @@ if __name__ == "__main__":
 
 
 
-    fig = plt.figure(figsize=(12, 20))
-    gs = GridSpec(5, 2, figure=fig, top=0.95, bottom=0.05, left=0.08, right=0.92, hspace=0.3, height_ratios=[0.5, 1, 1, 2, 2])
+    fig = plt.figure(figsize=(13, 26))
+    gs = GridSpec(7, 2, figure=fig, top=0.97, bottom=0.03, left=0.07, right=0.93, hspace=0.4, wspace=0.2, height_ratios=[0.5,1,1,0.5,0.8,2,2], width_ratios=[1,1])
 
     ax0 = fig.add_subplot(gs[0, 0])
     localizations = {
         "t": "Threads",
-        "c": "Connections (per tread)",
+        "c": "Connections",
         "R": "Requested RPS",
         "d": "Test iteration durations",
         "url": "URL"
     }
     table_data = []
+    table_data.append(["Tests count", len(parsed_results)])
     for key in parsed_results[0]["iteration_settings"].keys():
         values = [elem["iteration_settings"][key] for elem in parsed_results]
         unique_values = set(values)
@@ -210,20 +224,6 @@ if __name__ == "__main__":
     table.scale(1, 1.6)
 
     rs = [int(item["iteration_settings"]["R"]) for item in parsed_results]
-
-    table_data = [[],[],[],[]]
-    table_data[0] = rs.copy()
-    table_data[0].insert(0, "\R=")
-    table_data[1] = [elem["latency"]["max"] for elem in parsed_results]
-    table_data[1].insert(0, "Max lat")
-    table_data[2] = [elem["latency"]["avg"] for elem in parsed_results]
-    table_data[2].insert(0, "Avg lat")
-    table_data[3] = [int(float(elem["total"]["requests_per_sec"])) for elem in parsed_results]
-    table_data[3].insert(0, "RPS")
-    ax01 = fig.add_subplot(gs[0, 1])
-    ax01.axis('off')
-    table = ax01.table(cellText=table_data, loc='center', cellLoc='left')
-    table.scale(1, 1.05)
 
     ax1 = fig.add_subplot(gs[1, 0])
     RPSs = [float(item["total"]["requests_per_sec"]) for item in parsed_results]
@@ -241,23 +241,38 @@ if __name__ == "__main__":
     ax2.set_xlabel('R=')
     ax2.grid(True)
 
-    ax3 = fig.add_subplot(gs[2, 0])
+    def getPercentileLatency(targetPercentile):
+        targetPercentileLatencies = []
+        for item in parsed_results:
+            closestPercentile = "0"
+            for percentile in item['percentile_spectrum'].keys():
+                if abs(targetPercentile/100 - float(percentile)) < abs(targetPercentile/100 - float(closestPercentile)):
+                    closestPercentile = percentile
+            targetPercentileLatencies.append(float(item['percentile_spectrum'][closestPercentile]['value']))
+        return targetPercentileLatencies
+
+    ninetyFivePercentileLatencies = getPercentileLatency(95)
+    ninetyNinePercentileLatencies = getPercentileLatency(99)
+
+    ax3 = fig.add_subplot(gs[2, :])
     avgLatencies = [convert_to_ms(item["latency"]["avg"]) for item in parsed_results]
     medianLatencies = [convert_to_ms(item["latency_distribution"]["50.000%"]) for item in parsed_results]
     maxLatencies = [convert_to_ms(item["latency"]["max"]) for item in parsed_results]
+    ax3.plot(rs, maxLatencies, label='Max', marker='o')
+    ax3.plot(rs, ninetyNinePercentileLatencies, label=f'99%', marker='o')
+    ax3.plot(rs, ninetyFivePercentileLatencies, label=f'95%', marker='o')
+    ax3.plot(rs, medianLatencies, label='50%', marker='o')
     ax3.plot(rs, avgLatencies, label='Avg', marker='o')
-    ax3.plot(rs, medianLatencies, label='Median', marker='o')
-    ax3.plot(rs, maxLatencies, label='Max ', marker='o')
     ax3.set_title('Latency (ms)')
     ax3.legend()
     ax3.set_xlabel('R=')
     ax3.grid(True)
 
-    ax4 = fig.add_subplot(gs[2, 1])
-    socket_connect_errors = [int(item["errors"]["socket_connect"]) for item in parsed_results]
-    socket_read_errors = [int(item["errors"]["socket_read"]) for item in parsed_results]
-    socket_write_errors = [int(item["errors"]["socket_write"]) for item in parsed_results]
-    socket_timeout_errors = [int(item["errors"]["socket_timeout"]) for item in parsed_results]
+    ax4 = fig.add_subplot(gs[3, :])
+    socket_connect_errors = [item["errors"]["socket_connect"] for item in parsed_results]
+    socket_read_errors = [item["errors"]["socket_read"] for item in parsed_results]
+    socket_write_errors = [item["errors"]["socket_write"] for item in parsed_results]
+    socket_timeout_errors = [item["errors"]["socket_timeout"] for item in parsed_results]
     ax4.plot(rs, socket_connect_errors, label='SocketConnect Errors', marker='o')
     ax4.plot(rs, socket_read_errors, label='SocketRead Errors', marker='o')
     ax4.plot(rs, socket_write_errors, label='SocketWrite Errors', marker='o')
@@ -267,7 +282,31 @@ if __name__ == "__main__":
     ax4.legend()
     ax4.grid(True)
 
-    ax5 = fig.add_subplot(gs[3, :])
+    table_data = [[],[],[],[],[],[],[],[],[]]
+    table_data[0] = rs.copy()
+    table_data[0].insert(0, "R=")
+    table_data[1] = [int(float(elem["total"]["requests_per_sec"])) for elem in parsed_results]
+    table_data[1].insert(0, "RPS")
+    table_data[2] = [item["total"]["transfer_per_sec"] for item in parsed_results]
+    table_data[2].insert(0, "Tran/sec")
+    table_data[3] = [elem["latency"]["avg"] for elem in parsed_results]
+    table_data[3].insert(0, "Avg lat")
+    table_data[4] = [elem["latency_distribution"]["50.000%"] for elem in parsed_results]
+    table_data[4].insert(0, "50% lat")
+    table_data[5] = [ms_to_human_readable(elem) for elem in ninetyFivePercentileLatencies.copy()]
+    table_data[5].insert(0, "95% lat")
+    table_data[6] = [ms_to_human_readable(elem) for elem in ninetyNinePercentileLatencies.copy()]
+    table_data[6].insert(0, "99% lat")
+    table_data[7] = [elem["latency"]["max"] for elem in parsed_results]
+    table_data[7].insert(0, "Max lat")
+    table_data[8] = [sum(item["errors"].values()) for item in parsed_results]
+    table_data[8].insert(0, "Errors")
+    ax01 = fig.add_subplot(gs[4, :])
+    ax01.axis('off')
+    table = ax01.table(cellText=table_data, loc='center', cellLoc='left')
+    table.scale(1, 1.4)
+
+    ax5 = fig.add_subplot(gs[5, :])
     inner_ax1 = ax5
     for item in parsed_results:
         percentiles = list(item["latency_distribution"].keys())
@@ -280,7 +319,7 @@ if __name__ == "__main__":
     inner_ax1.legend()
     inner_ax1.grid(True)
 
-    ax5 = fig.add_subplot(gs[4, :])
+    ax5 = fig.add_subplot(gs[6, :])
     inner_ax2 = ax5
     for item in parsed_results:
         percentiles = list(item["percentile_spectrum"].keys())

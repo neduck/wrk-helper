@@ -23,6 +23,9 @@ Options:
 ```
 
 ## Previews
+### Basic Usage
 ![](previews/preview2.jpg)
-![](previews/preview3.jpg)
-![](previews/preview4.jpg)
+![](previews/preview3.png)
+### Data parsing and chart generation
+![](previews/preview4.png)
+![](previews/preview5.png)
