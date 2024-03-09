@@ -45,6 +45,7 @@ def ms_to_human_readable(ms):
 
 def convert_to_ms(value):
     unit_mapping = {
+        'us': 0.001,
         'μs': 0.001,
         'ms': 1,
         's': 1000,
@@ -155,6 +156,7 @@ def parse_wrk_output(output):
         'socket_read': 0,
         'socket_write': 0,
         'socket_timeout': 0,
+        'non_2xx_or_3xx_response': 0,
     }
     # Поиск ошибок сокета
     socket_errors_match = re.search(r'Socket errors: connect (\d+), read (\d+), write (\d+), timeout (\d+)', output)
@@ -163,6 +165,9 @@ def parse_wrk_output(output):
         data['errors']['socket_read'] = int(socket_errors_match.group(2))
         data['errors']['socket_write'] = int(socket_errors_match.group(3))
         data['errors']['socket_timeout'] = int(socket_errors_match.group(4))
+    response_errors_match = re.search(r'Non-2xx or 3xx responses: (\d+)', output)
+    if response_errors_match:
+        data['errors']['non_2xx_or_3xx_response'] = int(response_errors_match.group(1))
 
     return data
 
@@ -273,10 +278,12 @@ if __name__ == "__main__":
     socket_read_errors = [item["errors"]["socket_read"] for item in parsed_results]
     socket_write_errors = [item["errors"]["socket_write"] for item in parsed_results]
     socket_timeout_errors = [item["errors"]["socket_timeout"] for item in parsed_results]
+    non_2xx_or_3xx_response_errors = [item["errors"]["non_2xx_or_3xx_response"] for item in parsed_results]
     ax4.plot(rs, socket_connect_errors, label='SocketConnect Errors', marker='o')
     ax4.plot(rs, socket_read_errors, label='SocketRead Errors', marker='o')
     ax4.plot(rs, socket_write_errors, label='SocketWrite Errors', marker='o')
     ax4.plot(rs, socket_timeout_errors, label='SocketTimeout Errors', marker='o')
+    ax4.plot(rs, non_2xx_or_3xx_response_errors, label='non-2xx/3xx responses', marker='o')
     ax4.set_title('Errors count')
     ax4.set_xlabel('R=')
     ax4.legend()
