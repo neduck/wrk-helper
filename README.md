@@ -2,6 +2,21 @@
 A script for automating web application performance testing using [wrk](https://github.com/wg/wrk) or [wrk2](https://github.com/giltene/wrk2), running a series of tests with different parameters.
 
 ## Basic Usage
+python runner.py http://localhost -R 1000 2000 1000 -t8 -d60 -c 512
+```
+Helper for wrk
+
+positional arguments:
+  url           Url
+
+options:
+  -h, --help    show this help message and exit
+  -R R R R      RPS start stop step for generation RPS parameter string, eg -R 100 1000 200
+  -t T          Number of threads (default: $DEFAULT_THREADS)
+  -d D          Duration
+  -c C [C ...]  connections, eg -c 512 1024
+```
+
 ### Running Tests
 `./wrk_helper.sh -t4 -c"100,500" -R"100,500,1000,3000" -d60 http://localhost`
 ### Data parsing and chart generation 
