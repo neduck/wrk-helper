@@ -23,13 +23,9 @@ def run_wrk_helper(args: Namespace):
 
     files_before = os.listdir('.')
 
-    exec = ""
-    if args.p:
-        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} {args.url}"
-    else:
-        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -d{args.s} -p wrk {args.url}"
+    exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} {args.url}"
 
-    print(exec)
+    print("Running: ", exec)
 
     Process = Popen(
         [exec],
@@ -47,7 +43,7 @@ def run_wrk_parser(new_reports):
     for report in new_reports:
         exec = f"{sys.executable} {os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_parser.py {report}"
 
-        print(exec)
+        print("Running: ", exec)
 
         Process = Popen(
             [exec],
@@ -69,19 +65,22 @@ def main():
     parser.add_argument(
         "-t",
         type=int,
-        help="Number of threads (default: $DEFAULT_THREADS)"
+        default=1,
+        help="Number of threads (default: 1)"
     )
 
     parser.add_argument(
         "-d",
         type=int,
-        help="Duration"
+        default=15,
+        help="Duration (default: 15)"
     )
 
     parser.add_argument(
         "-s",
         type=int,
-        help="Sleep"
+        default=15,
+        help="Sleep (default: 15)"
     )
 
     parser.add_argument(
@@ -94,7 +93,14 @@ def main():
     parser.add_argument(
         "-p",
         type=str,
+        default="wrk",
         help="path to wrk script, eg -p /usr/local/bin/wrk (default: wrk)"
+    )
+
+    parser.add_argument(
+        "--with-graph",
+        action='store_true',
+        help="Generate graph"
     )
 
     parser.add_argument(
@@ -106,7 +112,8 @@ def main():
     args = parser.parse_args()
 
     new_reports = run_wrk_helper(args)
-    run_wrk_parser(new_reports)
+    if args.with_graph:
+        run_wrk_parser(new_reports)
 
 
 if __name__ == "__main__":
