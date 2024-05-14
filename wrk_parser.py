@@ -174,7 +174,8 @@ def parse_wrk_output(output):
 
 def parse_wrk_results(file_content):
     # Разбиваем содержимое файла на результаты работы wrk
-    results = re.split(r'[-—]+(?:\n|\r\n)wrk', file_content)
+    results = re.split(r'[-—]+\s*\n.*\s*wrk', file_content)
+    print(len(results))
     parsed_results = []
     for result in results:
         if result.strip() == '':

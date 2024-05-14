@@ -25,9 +25,9 @@ def run_wrk_helper(args: Namespace):
 
     exec = ""
     if args.p:
-        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -p {args.p} {args.url}"
+        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} {args.url}"
     else:
-        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -p wrk {args.url}"
+        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -d{args.s} -p wrk {args.url}"
 
     print(exec)
 
@@ -76,6 +76,12 @@ def main():
         "-d",
         type=int,
         help="Duration"
+    )
+
+    parser.add_argument(
+        "-s",
+        type=int,
+        help="Sleep"
     )
 
     parser.add_argument(
