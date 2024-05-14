@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Iterable
 from subprocess import Popen, PIPE
@@ -20,23 +21,40 @@ def run_wrk_helper(args: Namespace):
             map(str, args.c)
         )
 
+    files_before = os.listdir('.')
+
+    exec = ""
+    if args.p:
+        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -p {args.p} {args.url}"
+    else:
+        exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -p wrk {args.url}"
+
+    print(exec)
+
     Process = Popen(
-        [f"./wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} {args.url}"],
+        [exec],
         shell=True, stdin=PIPE, stderr=PIPE)
-    Process.communicate()
+    stdout, stderr = Process.communicate()
+    if stderr:
+        print(stderr)
+
+    files_after = os.listdir('.')
+    new_reports = [file for file in files_after if file not in files_before and file.endswith(".txt") and os.path.isfile(file)]
+    return new_reports
 
 
-def run_wrk_parser():
-    files = [f for f in os.listdir('.') if os.path.isfile(f)]
-    reports = list(filter(
-        lambda x: x.endswith(".txt"), files
-    ))
+def run_wrk_parser(new_reports):
+    for report in new_reports:
+        exec = f"{sys.executable} {os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_parser.py {report}"
 
-    for report in reports:
+        print(exec)
+
         Process = Popen(
-            [f"python ./wrk_parser.py {report}"],
+            [exec],
             shell=True, stdin=PIPE, stderr=PIPE)
-        Process.communicate()
+        stdout, stderr = Process.communicate()
+        if stderr:
+            print(stderr)
 
 
 def main():
@@ -68,6 +86,12 @@ def main():
     )
 
     parser.add_argument(
+        "-p",
+        type=str,
+        help="path to wrk script, eg -p /usr/local/bin/wrk (default: wrk)"
+    )
+
+    parser.add_argument(
         "url",
         type=str,
         help="Url"
@@ -75,8 +99,8 @@ def main():
 
     args = parser.parse_args()
 
-    run_wrk_helper(args)
-    run_wrk_parser()
+    new_reports = run_wrk_helper(args)
+    run_wrk_parser(new_reports)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.gridspec import GridSpec
+from argparse import ArgumentParser
 
 def convert_to_kilobytes(value):
     unit_mapping = {
@@ -184,22 +185,33 @@ def parse_wrk_results(file_content):
     return parsed_results
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python wrk_parser.py <input_filename.txt>")
-        sys.exit(1)
+    parser = ArgumentParser(description="Helper for wrk")
+    parser.add_argument(
+        "--save-json",
+        action='store_true',
+        help="Save parsed results to json file"
+    )
 
-    input_filename = sys.argv[1]
+    parser.add_argument(
+        "path",
+        type=str,
+        help="path to file with wrk output"
+    )
+
+    args = parser.parse_args()
+
+    input_filename = args.path
     with open(input_filename, 'r') as file:
         input_data = file.read()
 
     parsed_results = parse_wrk_results(input_data)
 
-    # Запись результатов парсинга в новый файл
-    output_filename = f"{input_filename[:-4]}_parsed.json"
-    with open(output_filename, 'w') as file:
-        file.write(json.dumps(parsed_results))
-
-    print(f"Parsed results saved to {output_filename}")
+    if args.save_json:
+        # Запись результатов парсинга в новый файл
+        output_filename = f"{input_filename[:-4]}_parsed.json"
+        with open(output_filename, 'w') as file:
+            file.write(json.dumps(parsed_results))
+        print(f"Parsed results saved to {output_filename}")
 
 
 
