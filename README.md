@@ -1,5 +1,5 @@
 # WRK helper
-A script for automating web application performance testing using [wrk](https://github.com/wg/wrk) or [wrk2](https://github.com/giltene/wrk2), running a series of tests with different parameters.
+A script for automating web application performance testing using [wrk](https://github.com/wg/wrk), [wrk2](https://github.com/giltene/wrk2), or [wrkx](https://github.com/devhands-io/wrkx) (Alexey Rybak's version with bug fixes and improvements). It runs a series of tests with different parameters and generates graphs.
 
 ## Basic Usage
 python runner.py http://localhost -R 1000 2000 1000 -t8 -d60 -c 512
