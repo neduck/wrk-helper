@@ -25,6 +25,12 @@ def run_wrk_helper(args: Namespace):
 
     exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} {args.url}"
 
+    if args.S:
+       exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} -S {args.S} {args.url}"
+
+    if args.S and args.a:
+       exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} -S {args.S} -a {','.join(args.a)} {args.url}"
+
     print("Running: ", exec)
 
     Process = Popen(
@@ -107,6 +113,19 @@ def main():
         "url",
         type=str,
         help="Url"
+    )
+
+    parser.add_argument(
+        "-S",
+        type=str,
+        help="Lua script path for complicated cases loadtesting"
+    )
+
+    parser.add_argument(
+       "-a",
+       type=str,
+       nargs="+",
+       help="args for Lua script, eg -a foo bar" 
     )
 
     args = parser.parse_args()
