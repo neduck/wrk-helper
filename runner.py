@@ -2,43 +2,75 @@
 
 import os
 import sys
+import time
+import math
+from datetime import datetime
 from argparse import ArgumentParser, Namespace
 from collections.abc import Iterable
 from subprocess import Popen, PIPE
 
-
-def make_rps_arg(rps: Iterable[int]) -> str:
+def make_rps_arg(rps: Iterable[int]):
     start, stop, step = rps
-    args_list = [str(arg) for arg in range(start, stop + step, step)]
-    return ",".join(args_list)
+    return range(start, stop + step, step)
+
+def run_tests(args: Namespace):
+    rps = make_rps_arg(args.R)
+    safe_url = args.url.replace(":", "_").replace("/", "_").replace(".", "_")
+
+    for conn in args.c:
+        output_file = f"{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}-{safe_url}-c{conn}.txt" 
+        run_test(rps, conn, output_file, args)
+    print("-------------------------------------------", end="\n")
+    print("Done", end="\n")
+
+def run_test(rps, conn, output_file, args: Namespace):
+    with open(output_file, "w+") as f:
+        for i, requested_rps in enumerate(rps):
+            total_connections = len(args.c) * len(rps)
+            total_runs = total_connections - i + 1
+            estimated_time = (args.s + args.d) * total_runs / 60.0
+            estimated_time = math.floor(estimated_time)
+
+            print(f"Running test with {conn} connections and {requested_rps} RPS... ({estimated_time}m left)")
+            run_wrk_command(requested_rps,conn, args, f)
+
+
+def run_wrk_command(rps, connections, args: Namespace, file = None):
+    exec = f"{args.p} -t{args.t} -c{connections} -d{args.d}s -R{rps} -L" 
+                
+    if args.S:
+        exec = f"{exec} -s {args.S}"
+
+    exec = f"{exec} {args.url}"
+
+    if args.S and args.a:
+        exec = exec.replace(args.url, "")
+        exec = f"{exec} {args.url} -- {' '.join(args.a)}"
+
+    print("Running: ", exec)
+    
+    if file:
+        file.write(f"{exec}\n")
+        file.flush()
+
+    Process = Popen([exec], shell=True, stdin=PIPE, stderr=PIPE, stdout=file or PIPE) 
+    _, stderr = Process.communicate()
+    if stderr:
+        print(stderr)
+
+    if file:
+        file.write("-------------------------------------------\n")
+        file.flush()
+
+    print("-------------------------------------------", end="\n")
+    print(f"Done. Sleep {args.s}", end="\n")
+    time.sleep(int(args.s))
 
 
 def run_wrk_helper(args: Namespace):
-    rps = make_rps_arg(args.R)
-    connections = args.c[0]
-    if len(args.c) > 1:
-        connections = ",".join(
-            map(str, args.c)
-        )
-
     files_before = os.listdir('.')
-
-    exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} {args.url}"
-
-    if args.S:
-       exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} -S {args.S} {args.url}"
-
-    if args.S and args.a:
-       exec = f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/wrk_helper.sh -t{args.t} -c{connections} -R{rps} -d{args.d} -s{args.s} -p {args.p} -S {args.S} -a {','.join(args.a)} {args.url}"
-
-    print("Running: ", exec)
-
-    Process = Popen(
-        [exec],
-        shell=True, stdin=PIPE, stderr=PIPE)
-    stdout, stderr = Process.communicate()
-    if stderr:
-        print(stderr)
+    
+    run_tests(args)
 
     files_after = os.listdir('.')
     new_reports = [file for file in files_after if file not in files_before and file.endswith(".txt") and os.path.isfile(file)]
